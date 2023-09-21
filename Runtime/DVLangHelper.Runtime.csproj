@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>netframework4.8</TargetFramework>
+		<Nullable>enable</Nullable>
+		<LangVersion>8</LangVersion>
+		<AssemblyName>$(MSBuildProjectName)</AssemblyName>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\Data\DVLangHelper.Data.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Reference Include="0Harmony" />
+		<Reference Include="DV.Localization" />
+		<Reference Include="I2.Localization" />
+		<Reference Include="UnityEngine" />
+		<Reference Include="UnityEngine.CoreModule" />
+		<Reference Include="UnityEngine.UnityWebRequestModule" />
+		<Reference Include="UnityModManager" />
+	</ItemGroup>
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	  <Exec Command="setlocal enableextensions&#xD;&#xA;if not exist &quot;$(SolutionDir)$(OutDir)&quot; md &quot;$(SolutionDir)$(OutDir)&quot;&#xD;&#xA;endlocal&#xD;&#xA;xcopy /d /y &quot;$(TargetPath)&quot; &quot;$(SolutionDir)$(OutDir)&quot;" />
+	</Target>
+</Project>
