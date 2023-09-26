@@ -67,7 +67,7 @@ namespace DVLangHelper.Runtime
 
     public class LangHelperSettings : UnityModManager.ModSettings, IDrawable
     {
-        [Draw("Enable Caching of Web CSVs")]
+        [Draw("Enable Caching of Web CSVs (debug)")]
         public bool UseCache = true;
 
         public void OnChange()

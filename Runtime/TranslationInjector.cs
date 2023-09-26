@@ -6,7 +6,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -61,62 +60,35 @@ namespace DVLangHelper.Runtime
             }
         }
 
-        public void AddTranslationsFromWebCsv(string url, string fallbackPath)
+        public void AddTranslationsFromWebCsv(string url)
         {
-            _source.StartCoroutine(AddWebCsvCoro(url, fallbackPath));
+            _source.StartCoroutine(AddWebCsvCoro(url));
         }
 
-        private static readonly SHA256 _hasher = SHA256.Create();
-
-        private static string GetSha256Hash(string input)
-        {
-            // Convert the input string to a byte array and compute the hash.
-            byte[] data = _hasher.ComputeHash(Encoding.UTF8.GetBytes(input));
-
-            // Create a new Stringbuilder to collect the bytes
-            // and create a string.
-            StringBuilder sBuilder = new StringBuilder();
-
-            // Loop through each byte of the hashed data 
-            // and format each one as a hexadecimal string.
-            for (int i = 0; i < data.Length; i++)
-            {
-                sBuilder.Append(data[i].ToString("x2"));
-            }
-
-            // Return the hexadecimal string.
-            return sBuilder.ToString();
-        }
-
-        private string GetCsvCachePath(string url)
-        {
-            string hash = GetSha256Hash(url);
-            return Path.Combine(LangHelperMain.CacheDirPath, $"{hash}.csv");
-        }
-
-        private IEnumerator AddWebCsvCoro(string url, string fallbackPath)
+        private IEnumerator AddWebCsvCoro(string url)
         {
             using var request = UnityWebRequest.Get(url);
             yield return request.SendWebRequest();
 
-            string cachePath = GetCsvCachePath(url);
+            string cachePath = Path.Combine(LangHelperMain.CacheDirPath, $"{Id}.csv");
 
             if (request.isNetworkError || request.responseCode != 200)
             {
-                LangHelperMain.Warning($"Failed to fetch web csv translations @ {url}, using fallback");
-
                 if (LangHelperMain.Settings.UseCache && File.Exists(cachePath))
                 {
+                    LangHelperMain.Warning($"Failed to fetch web csv translations @ {url}, using cached");
                     AddTranslationsFromCsv(cachePath);
                     yield break;
                 }
 
-                AddTranslationsFromCsv(fallbackPath);
+                LangHelperMain.Error($"Failed to fetch web csv translations @ {url}");
                 yield break;
             }
 
             string downloaded = request.downloadHandler.text;
             _langData.Import_CSV(string.Empty, downloaded, eSpreadsheetUpdateMode.Merge);
+
+            LangHelperMain.Log($"Successfully fetched web csv translations from {url}");
 
             if (LangHelperMain.Settings.UseCache)
             {
