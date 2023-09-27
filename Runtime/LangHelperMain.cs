@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using UnityEngine;
 using UnityModManagerNet;
 
 namespace DVLangHelper.Runtime
@@ -20,6 +21,7 @@ namespace DVLangHelper.Runtime
             Settings = UnityModManager.ModSettings.Load<LangHelperSettings>(modEntry);
             modEntry.OnGUI = DrawGUI;
             modEntry.OnSaveGUI = SaveGUI;
+            modEntry.OnHideGUI = HideGUI;
 
             string cacheDir = CacheDirPath;
             if (!Settings.UseCache && Directory.Exists(cacheDir))
@@ -35,14 +37,26 @@ namespace DVLangHelper.Runtime
             harmony.PatchAll(Assembly.GetExecutingAssembly());
         }
 
+        public static string GuiMessage = string.Empty;
+
         private static void DrawGUI(UnityModManager.ModEntry entry)
         {
             Settings.Draw(entry);
+
+            if (!string.IsNullOrEmpty(GuiMessage))
+            {
+                GUILayout.Label(GuiMessage);
+            }
         }
 
         private static void SaveGUI(UnityModManager.ModEntry entry)
         {
             Settings.Save(entry);
+        }
+
+        private static void HideGUI(UnityModManager.ModEntry entry)
+        {
+            GuiMessage = string.Empty;
         }
 
         public static void Log(string message)
@@ -70,9 +84,17 @@ namespace DVLangHelper.Runtime
         [Draw("Enable Caching of Web CSVs (debug)")]
         public bool UseCache = true;
 
+        [Draw("Reload translations files")]
+        public bool Reload = false;
+
         public void OnChange()
         {
-            
+            if (Reload)
+            {
+                Reload = false;
+                int nReloaded = TranslationInjector.ReloadTranslationFiles();
+                LangHelperMain.GuiMessage = $"Reloaded {nReloaded} translation files";
+            }
         }
 
         public override void Save(UnityModManager.ModEntry modEntry)

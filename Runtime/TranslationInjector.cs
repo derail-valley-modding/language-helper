@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using UnityEngine;
@@ -19,10 +20,35 @@ namespace DVLangHelper.Runtime
 
         public static bool InjectionStarted = false;
 
+        public static int ReloadTranslationFiles()
+        {
+            int totalReloaded = 0;
+            foreach (var instance in _instances)
+            {
+                foreach (var file in instance._csvFiles)
+                {
+                    switch (file.Type)
+                    {
+                        case CsvFileInfo.SourceType.Local:
+                            instance.AddTranslationsFromCsv(file.Path);
+                            totalReloaded++;
+                            break;
+                        case CsvFileInfo.SourceType.URL:
+                            instance.AddTranslationsFromWebCsv(file.Path);
+                            totalReloaded++;
+                            break;
+                    }
+                }
+            }
+            return totalReloaded;
+        }
+
         public readonly string Id;
         private readonly GameObject _sourceHolder;
         private readonly LanguageSource _source;
         private readonly LanguageSourceData _langData;
+
+        private readonly List<CsvFileInfo> _csvFiles = new List<CsvFileInfo>(1);
 
         public TranslationInjector(string sourceId)
         {
@@ -53,6 +79,11 @@ namespace DVLangHelper.Runtime
             {
                 string csvText = LocalizationReader.ReadCSVfile(csvPath, Encoding.UTF8);
                 _langData.Import_CSV(string.Empty, csvText, eSpreadsheetUpdateMode.Merge);
+
+                if (!_csvFiles.Any(f => f.Path == csvPath))
+                {
+                    _csvFiles.Add(new CsvFileInfo(CsvFileInfo.SourceType.Local, csvPath));
+                }
             }
             catch (Exception ex)
             {
@@ -87,6 +118,11 @@ namespace DVLangHelper.Runtime
 
             string downloaded = request.downloadHandler.text;
             _langData.Import_CSV(string.Empty, downloaded, eSpreadsheetUpdateMode.Merge);
+
+            if (!_csvFiles.Any(f => f.Path == url))
+            {
+                _csvFiles.Add(new CsvFileInfo(CsvFileInfo.SourceType.URL, url));
+            }
 
             LangHelperMain.Log($"Successfully fetched web csv translations from {url}");
 
@@ -144,6 +180,24 @@ namespace DVLangHelper.Runtime
         {
             LangHelperMain.Log($"Injecting language source {Id}");
             _addSourceMethod.Invoke(null, new object[] { _langData });
+        }
+
+        private readonly struct CsvFileInfo
+        {
+            public readonly SourceType Type;
+            public readonly string Path;
+            
+            public CsvFileInfo(SourceType type, string path)
+            {
+                Type = type;
+                Path = path;
+            }
+
+            public enum SourceType
+            {
+                Local,
+                URL,
+            }
         }
     }
 }

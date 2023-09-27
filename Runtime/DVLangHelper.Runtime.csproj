@@ -17,6 +17,7 @@
 		<Reference Include="I2.Localization" />
 		<Reference Include="UnityEngine" />
 		<Reference Include="UnityEngine.CoreModule" />
+		<Reference Include="UnityEngine.IMGUIModule" />
 		<Reference Include="UnityEngine.UnityWebRequestModule" />
 		<Reference Include="UnityModManager" />
 	</ItemGroup>
