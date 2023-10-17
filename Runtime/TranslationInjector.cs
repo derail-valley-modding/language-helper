@@ -116,7 +116,7 @@ namespace DVLangHelper.Runtime
                 yield break;
             }
 
-            string downloaded = request.downloadHandler.text;
+            string downloaded = request.downloadHandler.text.Replace("\r", string.Empty);
             _langData.Import_CSV(string.Empty, downloaded, eSpreadsheetUpdateMode.Merge);
 
             if (!_csvFiles.Any(f => f.Path == url))
