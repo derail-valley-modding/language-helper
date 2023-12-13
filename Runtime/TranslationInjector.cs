@@ -22,25 +22,11 @@ namespace DVLangHelper.Runtime
 
         public static int ReloadTranslationFiles()
         {
-            int totalReloaded = 0;
             foreach (var instance in _instances)
             {
-                foreach (var file in instance._csvFiles)
-                {
-                    switch (file.Type)
-                    {
-                        case CsvFileInfo.SourceType.Local:
-                            instance.AddTranslationsFromCsv(file.Path);
-                            totalReloaded++;
-                            break;
-                        case CsvFileInfo.SourceType.URL:
-                            instance.AddTranslationsFromWebCsv(file.Path);
-                            totalReloaded++;
-                            break;
-                    }
-                }
+                instance.Reload();
             }
-            return totalReloaded;
+            return _instances.Count;
         }
 
         public readonly string Id;
@@ -48,7 +34,14 @@ namespace DVLangHelper.Runtime
         private readonly LanguageSource _source;
         private readonly LanguageSourceData _langData;
 
+        public IEnumerable<LanguageData> Languages => _langData.mLanguages;
+        public IEnumerable<TermData> Terms => _langData.mTerms;
+
+        private readonly Dictionary<string, TranslationData> _originalData = new Dictionary<string, TranslationData>();
         private readonly List<CsvFileInfo> _csvFiles = new List<CsvFileInfo>(1);
+
+        private readonly List<string> _pendingWebRequests = new List<string>();
+        public bool PendingWebRequests => _pendingWebRequests.Count > 0;
 
         public TranslationInjector(string sourceId)
         {
@@ -59,11 +52,7 @@ namespace DVLangHelper.Runtime
             _source = _sourceHolder.AddComponent<LanguageSource>();
             _langData = _source.SourceData;
 
-            foreach (DVLanguage language in Enum.GetValues(typeof(DVLanguage)))
-            {
-                _langData.AddLanguage(language.Name(), language.Code());
-                _langData.EnableLanguage(language.Name(), true);
-            }
+            ResetData();
 
             _instances.Add(this);
 
@@ -73,14 +62,48 @@ namespace DVLangHelper.Runtime
             }
         }
 
-        public void AddTranslationsFromCsv(string csvPath)
+        public void ResetData()
+        {
+            _langData.ClearAllData();
+
+            foreach (DVLanguage language in Enum.GetValues(typeof(DVLanguage)))
+            {
+                _langData.AddLanguage(language.Name(), language.Code());
+                _langData.EnableLanguage(language.Name(), true);
+            }
+        }
+
+        public void Reload()
+        {
+            ResetData();
+
+            foreach (var file in _csvFiles)
+            {
+                switch (file.Type)
+                {
+                    case CsvFileInfo.SourceType.Local:
+                        AddTranslationsFromCsv(file.Path);
+                        break;
+                    case CsvFileInfo.SourceType.URL:
+                        AddTranslationsFromWebCsv(file.Path);
+                        break;
+                }
+            }
+
+            foreach (var kvp in _originalData)
+            {
+                AddTranslations(kvp.Key, kvp.Value, true);
+            }
+        }
+
+        public void AddTranslationsFromCsv(string csvPath, bool isOverride = false)
         {
             try
             {
                 string csvText = LocalizationReader.ReadCSVfile(csvPath, Encoding.UTF8);
                 _langData.Import_CSV(string.Empty, csvText, eSpreadsheetUpdateMode.Merge);
 
-                if (!_csvFiles.Any(f => f.Path == csvPath))
+                if (!isOverride && !_csvFiles.Any(f => f.Path == csvPath))
                 {
                     _csvFiles.Add(new CsvFileInfo(CsvFileInfo.SourceType.Local, csvPath));
                 }
@@ -93,6 +116,7 @@ namespace DVLangHelper.Runtime
 
         public void AddTranslationsFromWebCsv(string url)
         {
+            _pendingWebRequests.Add(url);
             _source.StartCoroutine(AddWebCsvCoro(url));
         }
 
@@ -108,11 +132,13 @@ namespace DVLangHelper.Runtime
                 if (LangHelperMain.Settings.UseCache && File.Exists(cachePath))
                 {
                     LangHelperMain.Warning($"Failed to fetch web csv translations @ {url}, using cached");
+                    _pendingWebRequests.Remove(url);
                     AddTranslationsFromCsv(cachePath);
                     yield break;
                 }
 
                 LangHelperMain.Error($"Failed to fetch web csv translations @ {url}");
+                _pendingWebRequests.Remove(url);
                 yield break;
             }
 
@@ -124,6 +150,7 @@ namespace DVLangHelper.Runtime
                 _csvFiles.Add(new CsvFileInfo(CsvFileInfo.SourceType.URL, url));
             }
 
+            _pendingWebRequests.Remove(url);
             LangHelperMain.Log($"Successfully fetched web csv translations from {url}");
 
             if (LangHelperMain.Settings.UseCache)
@@ -140,13 +167,15 @@ namespace DVLangHelper.Runtime
             }
         }
 
-        public void AddTranslations(string key, TranslationData data)
+        public void AddTranslations(string key, TranslationData data, bool isOverride = false)
         {
-            AddTranslations(key, data.Items);
+            AddTranslations(key, data.Items, isOverride);
         }
 
-        public void AddTranslations(string key, IEnumerable<TranslationItem> items)
+        public void AddTranslations(string key, IEnumerable<TranslationItem> items, bool isOverride = false)
         {
+            if (!isOverride) RegisterOriginalData(key, items.ToArray());
+
             var term = _langData.AddTerm(key);
             
             foreach (var item in items)
@@ -156,12 +185,29 @@ namespace DVLangHelper.Runtime
             }
         }
 
-        public void AddTranslation(string key, DVLanguage language, string value)
+        public void AddTranslation(string key, DVLanguage language, string value, bool isOverride = false)
         {
+            if (!isOverride) RegisterOriginalData(key, new TranslationItem(language, value));
+
             var term = _langData.AddTerm(key);
 
             int idx = _langData.GetLanguageIndexFromCode(language.Code());
             term.SetTranslation(idx, value);
+        }
+
+        private void RegisterOriginalData(string key, params TranslationItem[] items)
+        {
+            if (!_originalData.TryGetValue(key, out var data))
+            {
+                data = new TranslationData()
+                {
+                    Items = items.ToList(),
+                };
+                _originalData.Add(key, data);
+                return;
+            }
+
+            data.Items.AddRange(items);
         }
 
         public static void StartInjection()

@@ -43,6 +43,56 @@ namespace DVLangHelper.Runtime
         {
             Settings.Draw(entry);
 
+            GUILayout.Space(5);
+            GUILayout.Label("NOTE: Changes made to translation overrides may require a game restart");
+            GUILayout.BeginHorizontal();
+
+            if (GUILayout.Button("Reload Overrides", GUILayout.Width(200)))
+            {
+                OverrideManager.ReloadOverrides(true);
+            }
+
+            if (GUILayout.Button("Open Folder", GUILayout.Width(200)))
+            {
+                if (!Directory.Exists(OverrideManager.OverrideDir))
+                {
+                    Directory.CreateDirectory(OverrideManager.OverrideDir);
+                }
+                System.Diagnostics.Process.Start("explorer.exe", OverrideManager.OverrideDir);
+            }
+
+            GUILayout.EndHorizontal();
+
+            foreach (var source in TranslationInjector.Instances)
+            {
+                GUILayout.BeginHorizontal();
+
+                GUILayout.Label(source.Id);
+
+                if (GUILayout.Button("New Override File", GUILayout.Width(200)))
+                {
+                    OverrideManager.CreateOverrideFile(source.Id);
+                    GuiMessage = $"Created {source.Id} override file";
+                }
+                
+                GUI.enabled = OverrideManager.DoesOverrideExist(source.Id);
+                if (GUILayout.Button("Reload", GUILayout.Width(100)))
+                {
+                    OverrideManager.ReloadOverrideForSource(source.Id);
+                    GuiMessage = $"Reloaded overrides for {source.Id}";
+                }
+
+                if (GUILayout.Button("Delete", GUILayout.Width(100)))
+                {
+                    OverrideManager.DeleteOverrideFile(source.Id);
+                    GuiMessage = $"Deleted {source.Id} override file";
+                }
+                GUI.enabled = true;
+
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(5);
             if (!string.IsNullOrEmpty(GuiMessage))
             {
                 GUILayout.Label(GuiMessage);
@@ -100,6 +150,22 @@ namespace DVLangHelper.Runtime
         public override void Save(UnityModManager.ModEntry modEntry)
         {
             Save(this, modEntry);
+        }
+    }
+
+    [HarmonyPatch]
+    internal static class UMM_AfterLoadPatch
+    {
+        [HarmonyTargetMethod]
+        public static MethodInfo GetTarget()
+        {
+            return typeof(UnityModManager).GetNestedType("GameScripts", BindingFlags.NonPublic).GetMethod("OnAfterLoadMods");
+        }
+
+        [HarmonyPostfix]
+        public static void AfterLoaded()
+        {
+            OverrideManager.ReloadOverrides(false);
         }
     }
 }
