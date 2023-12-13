@@ -28,6 +28,11 @@ namespace DVLangHelper.Data
                 new TranslationItem() { Value = englishName } 
             }
         };
+
+        public void Concat(TranslationData other)
+        {
+            Items.AddRange(other.Items);
+        }
     }
 
     [Serializable]
