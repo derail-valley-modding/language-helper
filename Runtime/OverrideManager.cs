@@ -92,6 +92,11 @@ namespace DVLangHelper.Runtime
 
         private static IEnumerator ReloadOverridesWorker(bool reloadAll)
         {
+            if (!Directory.Exists(OverrideDir))
+            {
+                Directory.CreateDirectory(OverrideDir);
+            }
+
             foreach (string overrideFilePath in Directory.EnumerateFiles(OverrideDir, "*.csv"))
             {
                 string sourceId = Path.GetFileNameWithoutExtension(overrideFilePath);
