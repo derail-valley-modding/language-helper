@@ -44,6 +44,14 @@ _https://docs.google.com/spreadsheets/d/0000000000000000000000000/export?format=
 
 There is a template CSV file in the Data folder of the repository that can be used as a starting point for your own translation file. You should keep the header rows as they are, as these need to match the game languages.
 
+In addition, it is recommended to include an offline copy of your translation spreadsheet with the release files, so that anyone behind a restrictive firewall can still use translations even if slightly outdated. To do this, use the link you created in the step above to save the file to your disk, and include it alongside your mod DLL when zipping it up. Then, directly above the `AddTranslationsFromWebCsv()` line, call `AddTranslationsFromCsv()` on the local copy. The web version will override the local version if the request is successful:
+
+```csharp
+translations.AddTranslationsFromCsv(Path.Combine(modEntry.Path, "offline_translations.csv"));
+string url = "https://docs.google.com/spreadsheets/d/0000000000000000000000000/export?format=csv";
+translations.AddTranslationsFromWebCsv(url);
+```
+
 ## Using translated values at runtime:
 You must include a reference to DV.Localization.dll in your project to use the localization API.
 ### Simple value:
