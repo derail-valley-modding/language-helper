@@ -34,15 +34,16 @@ translations.AddTranslationsFromCsv(path);
 string url = "https://docs.google.com/spreadsheets/d/0000000000000000000000000/export?format=csv";
 translations.AddTranslationsFromWebCsv(url);
 ```
-You can use a google sheet as your translation source by setting it to "Anyone with link can view", then copying the link and swapping the "/edit" section for "/export?format=csv":
-
-_https://docs.google.com/spreadsheets/d/0000000000000000000000000/edit?usp=sharing_
-
-becomes
-
-_https://docs.google.com/spreadsheets/d/0000000000000000000000000/export?format=csv_
-
-There is a template CSV file in the Data folder of the repository that can be used as a starting point for your own translation file. You should keep the header rows as they are, as these need to match the game languages.
+> [!TIP]
+> A Template for making your own translation spreadsheet is available [here](https://docs.google.com/spreadsheets/d/17bsnt45jNpnuvIsjK8WJ0HvYUZ-UTuY7yvxYcPvRe7Y/edit?usp=sharing). Simply click `File > Make a Copy` to duplicate it in your own drive. You can use a google sheet as your translation source by setting it to "Anyone with link can view", then copying the link and swapping the "/edit" section for "/export?format=csv":
+>
+> _https://docs.google.com/spreadsheets/d/0000000000000000000000000/edit?usp=sharing_
+>
+> becomes
+>
+> _https://docs.google.com/spreadsheets/d/0000000000000000000000000/export?format=csv_
+>
+> The template CSV file is also included in the Data folder of this repository. You should keep the header rows as they are, as these need to match the game languages.
 
 In addition, it is recommended to include an offline copy of your translation spreadsheet with the release files, so that anyone behind a restrictive firewall can still use translations even if slightly outdated. To do this, use the link you created in the step above to save the file to your disk, and include it alongside your mod DLL when zipping it up. Then, directly above the `AddTranslationsFromWebCsv()` line, call `AddTranslationsFromCsv()` on the local copy. The web version will override the local version if the request is successful:
 
